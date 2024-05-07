@@ -1,2 +1,3 @@
 # gin-group
- 自动绑定 gin 接口
+
+自动绑定 gin 接口

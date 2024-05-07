@@ -44,8 +44,8 @@ func NameOfHandler(fn HandlerFunc) string {
 func SplitHandlerName(fn HandlerFunc) (method, path string) {
 	s := MethodEXP.FindStringSubmatch(NameOfHandler(fn))
 	if len(s) == 3 {
-		method = s[0]
-		path = s[1]
+		method = s[1]
+		path = s[2]
 	}
 	return
 }

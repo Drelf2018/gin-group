@@ -1,10 +1,21 @@
-# gin-group
+package group_test
 
-自动绑定 [gin](https://github.com/gin-gonic/gin) 接口
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math/rand"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
 
-### 使用
+	group "github.com/Drelf2018/gin-group"
+	"github.com/gin-gonic/gin"
+)
 
-```go
 func GetPing(ctx *gin.Context) (any, error) {
 	return "pong", nil
 }
@@ -87,7 +98,7 @@ func GetDownload(ctx *gin.Context) (any, error) {
 }
 
 func init() {
-    api := group.Group{
+	api := group.Group{
 		Middleware: group.CORS,
 		Handlers: []group.H{
 			GetPing,
@@ -112,11 +123,7 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 	go api.Default().Run("localhost:8080")
 }
-```
 
-#### 测试
-
-```go
 func get(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -124,6 +131,26 @@ func get(url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)
+}
+
+func TestPing(t *testing.T) {
+	b, err := get("http://localhost:8080/ping")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(b))
+}
+
+func TestCover(t *testing.T) {
+	b, err := get("http://localhost:8080/cover?mid=abc123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := group.Unmarshal[string](b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r.Data)
 }
 
 func TestDownload(t *testing.T) {
@@ -159,15 +186,3 @@ func TestDownload(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-```
-
-```
-=== RUN   TestDownload
-[GIN] 2024/10/24 - 12:36:39 | 200 |    147.3922ms |       127.0.0.1 | GET      "/cover?mid=BV1hxmwYDEJ6"
-    group_test.go:166: cover: http://i1.hdslb.com/bfs/archive/090bdea9fa9e5cacd78f50961e4db615d13cee5e.jpg
-[GIN] 2024/10/24 - 12:36:40 | 200 |    235.8089ms |       127.0.0.1 | GET      "/admin/download?name=admin&url=http://i1.hdslb.com/bfs/archive/090bdea9fa9e5cacd78f50961e4db615d13cee5e.jpg"
-    group_test.go:176: uuid: 3066316637040541
-[GIN] 2024/10/24 - 12:36:40 | 200 |       504.6µs |       127.0.0.1 | GET      "/admin/resource/3066316637040541?name=admin"
---- PASS: TestDownload (0.40s)
-PASS
-```

@@ -3,6 +3,7 @@ package group
 import (
 	"regexp"
 	"strings"
+	"sync"
 
 	_ "unsafe"
 )
@@ -19,7 +20,7 @@ const (
 	MethodTrace   = "Trace"
 )
 
-var AnyMethods = []string{
+var MethodAny = []string{
 	MethodGet,
 	MethodHead,
 	MethodPost,
@@ -31,40 +32,28 @@ var AnyMethods = []string{
 	MethodTrace,
 }
 
-var MethodEXP = regexp.MustCompile("^(" + strings.Join(AnyMethods, "|") + ")(\\w+)")
+var MethodExpr = regexp.MustCompile(`\.(` + strings.Join(MethodAny, "|") + `)(\w+)`)
 
 //go:linkname NameOfFunction github.com/gin-gonic/gin.nameOfFunction
 func NameOfFunction(any) string
 
-func NameOfHandler(fn HandlerFunc) string {
-	s := strings.Split(NameOfFunction(fn), ".")
-	return s[len(s)-1]
-}
-
-func SplitHandlerName(fn HandlerFunc) (method, path string) {
-	s := MethodEXP.FindStringSubmatch(NameOfHandler(fn))
-	if len(s) == 3 {
-		method = s[1]
-		path = s[2]
-	}
-	return
-}
-
-const (
-	Colon    = "Colon"
-	Asterisk = "Asterisk"
-)
-
 var relativePath *strings.Replacer
 
 func init() {
-	oldnew := []string{Colon, "/:", Asterisk, "/*"}
+	oldnew := []string{"ID", "_id"}
 	for i := 'A'; i <= 'Z'; i++ {
-		oldnew = append(oldnew, "_"+string(i), string(i), string(i), "/"+string(i+32))
+		oldnew = append(oldnew, string(i)+"ID", "_"+string(i+32)+"id", string(i), "_"+string(i+32))
 	}
 	relativePath = strings.NewReplacer(oldnew...)
 }
 
 func ParsePath(path string) string {
-	return relativePath.Replace(path)
+	return relativePath.Replace(path)[1:]
+}
+
+var pathCache sync.Map // map[string][2]string
+
+func Wrapper(method, path string, handler HandlerFunc) HandlerFunc {
+	pathCache.Store(NameOfFunction(handler), [2]string{method, path})
+	return handler
 }

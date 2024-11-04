@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type G = Group
+
 type Group struct {
 	Path        string
 	Middleware  gin.HandlerFunc

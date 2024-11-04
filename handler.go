@@ -17,10 +17,12 @@ type Error struct {
 	Err  error
 }
 
-type E = Error
-
 func (e Error) Error() string {
 	return e.Err.Error()
+}
+
+func E(code int, err error) Error {
+	return Error{code, err}
 }
 
 type Response struct {
@@ -31,20 +33,18 @@ type Response struct {
 
 // Call is a gin.HandlerFunc with receiver f.
 func (f HandlerFunc) Handle(ctx *gin.Context) {
-	data, err := f(ctx)
-	if err == nil {
+	if data, err := f(ctx); err == nil {
 		if data != nil {
 			ctx.JSON(http.StatusOK, Response{0, "", data})
 		}
 	} else {
+		ctx.Error(err)
 		if e, ok := err.(Error); ok {
 			ctx.JSON(http.StatusOK, Response{e.Code, e.Err.Error(), data})
+		} else if code, ok := data.(int); ok {
+			ctx.JSON(http.StatusOK, Response{code, err.Error(), nil})
 		} else {
-			if code, ok := data.(int); ok {
-				ctx.JSON(http.StatusOK, Response{code, err.Error(), nil})
-			} else {
-				ctx.JSON(http.StatusOK, Response{1, err.Error(), data})
-			}
+			ctx.JSON(http.StatusOK, Response{1, err.Error(), data})
 		}
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	_ "unsafe"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -40,15 +42,15 @@ func NameOfFunction(any) string
 var relativePath *strings.Replacer
 
 func init() {
-	oldnew := []string{"ID", "_id"}
+	oldnew := []string{"ID", "/:id"}
 	for i := 'A'; i <= 'Z'; i++ {
-		oldnew = append(oldnew, string(i)+"ID", "_"+string(i+32)+"id", string(i), "_"+string(i+32))
+		oldnew = append(oldnew, string(i)+"ID", "/:"+string(i+32)+"id", string(i), "/:"+string(i+32))
 	}
 	relativePath = strings.NewReplacer(oldnew...)
 }
 
 func ParsePath(path string) string {
-	return relativePath.Replace(path)[1:]
+	return "/" + relativePath.Replace(path)[2:]
 }
 
 var pathCache sync.Map // map[string][2]string
@@ -56,4 +58,8 @@ var pathCache sync.Map // map[string][2]string
 func Wrapper(method, path string, handler HandlerFunc) HandlerFunc {
 	pathCache.Store(NameOfFunction(handler), [2]string{method, path})
 	return handler
+}
+
+func Unwrap(handler HandlerFunc) gin.HandlerFunc {
+	return handler.Handle
 }

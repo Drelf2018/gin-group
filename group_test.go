@@ -61,7 +61,7 @@ var files = make(map[string]File)
 
 var ErrNoFile = errors.New("example: the file does not exist")
 
-func GetResource(ctx *gin.Context) (any, error) {
+func GetResourceFile(ctx *gin.Context) (any, error) {
 	file, ok := files[ctx.Param("file")]
 	if !ok {
 		return 1, ErrNoFile
@@ -116,11 +116,11 @@ func init() {
 			},
 			Handlers: []group.H{
 				GetDownload,
-				group.Wrapper(http.MethodGet, "/resource/:file", GetResource),
+				GetResourceFile,
 			},
 		}},
 	}
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 	go api.Default().Run("localhost:8080")
 }
 

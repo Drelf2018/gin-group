@@ -6,13 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func M(middleware ...gin.HandlerFunc) []gin.HandlerFunc {
+	return middleware
+}
+
 type G = Group
 
 type Group struct {
 	Path        string
-	Middleware  gin.HandlerFunc
 	Middlewares []gin.HandlerFunc
-	Custom      func(gin.IRouter)
+	Middleware  gin.HandlerFunc
+	CustomFunc  func(gin.IRouter)
 	Handlers    []HandlerFunc
 	Groups      []Group
 }
@@ -21,14 +25,14 @@ func (group *Group) Bind(r gin.IRouter) {
 	if group.Path != "" {
 		r = r.Group(group.Path)
 	}
+	if len(group.Middlewares) != 0 {
+		r.Use(group.Middlewares...)
+	}
 	if group.Middleware != nil {
 		r.Use(group.Middleware)
 	}
-	if group.Middlewares != nil {
-		r.Use(group.Middlewares...)
-	}
-	if group.Custom != nil {
-		group.Custom(r)
+	if group.CustomFunc != nil {
+		group.CustomFunc(r)
 	}
 	for _, handler := range group.Handlers {
 		var method, path string

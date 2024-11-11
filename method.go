@@ -34,7 +34,7 @@ var MethodAny = []string{
 	MethodTrace,
 }
 
-var MethodExpr = regexp.MustCompile(`\.(` + strings.Join(MethodAny, "|") + `)(\w+)`)
+var MethodExpr = regexp.MustCompile(`\.(` + strings.Join(MethodAny, "|") + `)(\w*)`)
 
 //go:linkname NameOfFunction github.com/gin-gonic/gin.nameOfFunction
 func NameOfFunction(any) string
@@ -50,7 +50,14 @@ func init() {
 }
 
 func ParsePath(path string) string {
-	return "/" + relativePath.Replace(path)[2:]
+	if path == "" {
+		return ""
+	}
+	new := relativePath.Replace(path)
+	if 'A' <= path[0] && path[0] <= 'Z' {
+		new = new[2:]
+	}
+	return "/" + new
 }
 
 var pathCache sync.Map // map[string][2]string

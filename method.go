@@ -3,11 +3,8 @@ package group
 import (
 	"regexp"
 	"strings"
-	"sync"
 
 	_ "unsafe"
-
-	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -34,8 +31,11 @@ var MethodAny = []string{
 	MethodTrace,
 }
 
+// 请求方法的正则表达式
 var MethodExpr = regexp.MustCompile(`\.(` + strings.Join(MethodAny, "|") + `)(\w*)`)
 
+// 获取函数名
+//
 //go:linkname NameOfFunction github.com/gin-gonic/gin.nameOfFunction
 func NameOfFunction(any) string
 
@@ -49,7 +49,8 @@ func init() {
 	relativePath = strings.NewReplacer(oldnew...)
 }
 
-func ParsePath(path string) string {
+// 路径解析
+var ParsePath = func(path string) string {
 	if path == "" {
 		return ""
 	}
@@ -58,15 +59,4 @@ func ParsePath(path string) string {
 		new = new[2:]
 	}
 	return "/" + new
-}
-
-var pathCache sync.Map // map[string][2]string
-
-func Wrapper(method, path string, handler HandlerFunc) HandlerFunc {
-	pathCache.Store(NameOfFunction(handler), [2]string{method, path})
-	return handler
-}
-
-func Unwrap(handler HandlerFunc) gin.HandlerFunc {
-	return handler.Handle
 }

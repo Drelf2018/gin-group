@@ -99,29 +99,31 @@ func GetDownload(ctx *gin.Context) (any, error) {
 
 func init() {
 	api := group.Group{
-		Middleware: group.CORS,
-		Handlers: []group.H{
+		Middlewares: group.M{group.CORS},
+		Handlers: group.H{
 			GetPing,
 			GetCover,
 		},
-		Groups: []group.Group{{
+		Groups: group.G{{
 			Path: "admin",
-			Middleware: func(ctx *gin.Context) {
+			Middlewares: group.M{func(ctx *gin.Context) {
 				if ctx.Query("name") != "admin" {
 					ctx.AbortWithStatusJSON(http.StatusUnauthorized, group.Response{
 						Code:  1,
 						Error: "you are not administrator!",
 					})
 				}
-			},
-			Handlers: []group.H{
+			}},
+			Handlers: group.H{
 				GetDownload,
 				GetResourceFile,
 			},
 		}},
 	}
 	// gin.SetMode(gin.ReleaseMode)
-	go api.Default().Run("localhost:8080")
+	r := gin.Default()
+	api.Bind(r)
+	go r.Run("localhost:8080")
 }
 
 func get(url string) ([]byte, error) {
@@ -146,11 +148,7 @@ func TestCover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := group.Unmarshal[string](b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(r.Data)
+	t.Log(string(b))
 }
 
 func TestDownload(t *testing.T) {
@@ -158,7 +156,10 @@ func TestDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := group.Unmarshal[string](b)
+	var r struct {
+		Data string `json:"data"`
+	}
+	err = json.Unmarshal(b, &r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,9 +170,9 @@ func TestDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err = group.Unmarshal[string](b)
+	err = json.Unmarshal(b, &r)
 	if err != nil {
-		t.Fatal(string(b), err)
+		t.Fatal(err)
 	}
 	t.Log("uuid:", r.Data)
 

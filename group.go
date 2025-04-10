@@ -6,65 +6,55 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func M(middleware ...gin.HandlerFunc) []gin.HandlerFunc {
-	return middleware
-}
+type (
+	M = []gin.HandlerFunc
+	H = []HandlerFunc
+	G = []Group
+)
 
-type G = Group
-
+// 接口组 (r = gin.IRouter)
 type Group struct {
-	Path        string
+	// 相对路径 (r.Group)
+	Path string
+
+	// 中间件 (r.Use)
 	Middlewares []gin.HandlerFunc
-	Middleware  gin.HandlerFunc
-	CustomFunc  func(gin.IRouter)
-	Handlers    []HandlerFunc
-	Groups      []Group
+
+	// 自定义函数
+	// 用户可以自行绑定内容
+	CustomFunc func(r gin.IRouter)
+
+	// 自动接口绑定 (r.Handle)
+	Handlers []HandlerFunc
+
+	// 转换器
+	// 为空则使用默认转换函数
+	Convertor func(HandlerFunc) gin.HandlerFunc
+
+	// 子接口组
+	Groups []Group
 }
 
-func (group *Group) Bind(r gin.IRouter) {
-	if group.Path != "" {
-		r = r.Group(group.Path)
-	}
+// 绑定接口
+func (group Group) Bind(r gin.IRouter) {
 	if len(group.Middlewares) != 0 {
 		r.Use(group.Middlewares...)
-	}
-	if group.Middleware != nil {
-		r.Use(group.Middleware)
 	}
 	if group.CustomFunc != nil {
 		group.CustomFunc(r)
 	}
 	for _, handler := range group.Handlers {
-		var method, path string
 		name := NameOfFunction(handler)
-		if val, ok := pathCache.Load(name); ok {
-			method = val.([2]string)[0]
-			path = val.([2]string)[1]
-		}
-		if method == "" {
-			matched := MethodExpr.FindStringSubmatch(name)
-			if len(matched) == 3 {
-				method = matched[1]
-				path = ParsePath(matched[2])
+		matched := MethodExpr.FindStringSubmatch(name)
+		if len(matched) == 3 && matched[1] != "" {
+			if group.Convertor != nil {
+				r.Handle(strings.ToUpper(matched[1]), ParsePath(matched[2]), group.Convertor(handler))
+			} else {
+				r.Handle(strings.ToUpper(matched[1]), ParsePath(matched[2]), DefaultConvertor(handler))
 			}
-		}
-		if method != "" {
-			r.Handle(strings.ToUpper(method), path, handler.Handle)
 		}
 	}
 	for _, v := range group.Groups {
-		v.Bind(r)
+		v.Bind(r.Group(v.Path))
 	}
-}
-
-func (group *Group) New() (r *gin.Engine) {
-	r = gin.New()
-	group.Bind(r)
-	return
-}
-
-func (group *Group) Default() (r *gin.Engine) {
-	r = gin.Default()
-	group.Bind(r)
-	return
 }

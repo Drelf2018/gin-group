@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	_ "unsafe"
 )
 
 // 解决跨域问题
@@ -18,11 +20,11 @@ func CORS(ctx *gin.Context) {
 	ctx.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type")
 	ctx.Header("Access-Control-Allow-Credentials", "true")
 	if ctx.Request.Method == http.MethodOptions {
-		// 禁止所有 OPTIONS 方法 原因见博文
-		ctx.AbortWithStatus(http.StatusNoContent)
+		ctx.AbortWithStatus(http.StatusNoContent) // 禁止所有 OPTIONS 方法 原因见博文
 	}
 }
 
+//go:linkname walk
 func walk(path string) (files []string) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -40,12 +42,13 @@ func walk(path string) (files []string) {
 	return
 }
 
+// 绑定静态资源
 func Static(s string) gin.HandlerFunc {
 	s = filepath.Clean(s)
-	rep := strings.NewReplacer(s, "", "\\", "/")
+	repl := strings.NewReplacer(s, "", "\\", "/")
 	files := make(map[string]string)
 	for _, file := range walk(s) {
-		files[rep.Replace(file)] = file
+		files[repl.Replace(file)] = file
 	}
 	if index, ok := files["/index.html"]; ok {
 		files["/"] = index

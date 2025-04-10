@@ -5,6 +5,24 @@
 ### 使用
 
 ```go
+package group_test
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math/rand"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	group "github.com/Drelf2018/gin-group"
+	"github.com/gin-gonic/gin"
+)
+
 func GetPing(ctx *gin.Context) (any, error) {
 	return "pong", nil
 }
@@ -50,7 +68,7 @@ var files = make(map[string]File)
 
 var ErrNoFile = errors.New("example: the file does not exist")
 
-func GetResource(ctx *gin.Context) (any, error) {
+func GetResourceFile(ctx *gin.Context) (any, error) {
 	file, ok := files[ctx.Param("file")]
 	if !ok {
 		return 1, ErrNoFile
@@ -87,36 +105,33 @@ func GetDownload(ctx *gin.Context) (any, error) {
 }
 
 func init() {
-    api := group.Group{
-		Middleware: group.CORS,
-		Handlers: []group.H{
+	api := group.Group{
+		Middlewares: group.M{group.CORS},
+		Handlers: group.H{
 			GetPing,
 			GetCover,
 		},
-		Groups: []group.Group{{
+		Groups: group.G{{
 			Path: "admin",
-			Middleware: func(ctx *gin.Context) {
+			Middlewares: group.M{func(ctx *gin.Context) {
 				if ctx.Query("name") != "admin" {
 					ctx.AbortWithStatusJSON(http.StatusUnauthorized, group.Response{
 						Code:  1,
 						Error: "you are not administrator!",
 					})
 				}
-			},
-			Handlers: []group.H{
+			}},
+			Handlers: group.H{
 				GetDownload,
-				group.Wrapper(http.MethodGet, "/resource/:file", GetResource),
+				GetResourceFile,
 			},
 		}},
 	}
-	gin.SetMode(gin.ReleaseMode)
-	go api.Default().Run("localhost:8080")
+	r := gin.Default()
+	api.Bind(r)
+	go r.Run("localhost:8080")
 }
-```
 
-#### 测试
-
-```go
 func get(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -126,12 +141,31 @@ func get(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
+func TestPing(t *testing.T) {
+	b, err := get("http://localhost:8080/ping")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(b))
+}
+
+func TestCover(t *testing.T) {
+	b, err := get("http://localhost:8080/cover?mid=abc123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(b))
+}
+
 func TestDownload(t *testing.T) {
 	b, err := get("http://localhost:8080/cover?mid=BV1hxmwYDEJ6")
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := group.Unmarshal[string](b)
+	var r struct {
+		Data string `json:"data"`
+	}
+	err = json.Unmarshal(b, &r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,9 +176,9 @@ func TestDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err = group.Unmarshal[string](b)
+	err = json.Unmarshal(b, &r)
 	if err != nil {
-		t.Fatal(string(b), err)
+		t.Fatal(err)
 	}
 	t.Log("uuid:", r.Data)
 
@@ -161,13 +195,24 @@ func TestDownload(t *testing.T) {
 }
 ```
 
-```
+#### 测试
+
+```md
+=== RUN   TestPing
+[GIN] 2025/04/10 - 10:49:40 | 200 |            0s |       127.0.0.1 | GET      "/ping"
+    group_test.go:143: {"code":0,"data":"pong"}
+--- PASS: TestPing (0.02s)
+=== RUN   TestCover
+[GIN] 2025/04/10 - 10:49:40 | 200 |            0s |       127.0.0.1 | GET      "/cover?mid=abc123"
+    group_test.go:151: {"code":1,"error":"example: abc123 is an invalid bvid"}
+--- PASS: TestCover (0.00s)
 === RUN   TestDownload
-[GIN] 2024/10/24 - 12:36:39 | 200 |    147.3922ms |       127.0.0.1 | GET      "/cover?mid=BV1hxmwYDEJ6"
-    group_test.go:166: cover: http://i1.hdslb.com/bfs/archive/090bdea9fa9e5cacd78f50961e4db615d13cee5e.jpg
-[GIN] 2024/10/24 - 12:36:40 | 200 |    235.8089ms |       127.0.0.1 | GET      "/admin/download?name=admin&url=http://i1.hdslb.com/bfs/archive/090bdea9fa9e5cacd78f50961e4db615d13cee5e.jpg"
-    group_test.go:176: uuid: 3066316637040541
-[GIN] 2024/10/24 - 12:36:40 | 200 |       504.6µs |       127.0.0.1 | GET      "/admin/resource/3066316637040541?name=admin"
---- PASS: TestDownload (0.40s)
+[GIN] 2025/04/10 - 10:49:40 | 200 |    118.7583ms |       127.0.0.1 | GET      "/cover?mid=BV1hxmwYDEJ6"
+    group_test.go:167: cover: http://i1.hdslb.com/bfs/archive/090bdea9fa9e5cacd78f50961e4db615d13cee5e.jpg
+[GIN] 2025/04/10 - 10:49:40 | 200 |    170.4483ms |       127.0.0.1 | GET      "/admin/download?name=admin&url=http://i1.hdslb.com/bfs/archive/090bdea9fa9e5cacd78f50961e4db615d13cee5e.jpg"
+    group_test.go:177: uuid: 49398748697639516
+[GIN] 2025/04/10 - 10:49:40 | 200 |            0s |       127.0.0.1 | GET      "/admin/resource/49398748697639516?name=admin"
+--- PASS: TestDownload (0.29s)
 PASS
+ok      github.com/Drelf2018/gin-group  0.337s
 ```

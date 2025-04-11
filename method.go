@@ -39,6 +39,7 @@ var MethodExpr = regexp.MustCompile(`\.(` + strings.Join(MethodAny, "|") + `)(\w
 //go:linkname NameOfFunction github.com/gin-gonic/gin.nameOfFunction
 func NameOfFunction(any) string
 
+//go:linkname relativePath
 var relativePath *strings.Replacer
 
 func init() {
@@ -59,4 +60,15 @@ var ParsePath = func(path string) string {
 		new = new[2:]
 	}
 	return "/" + new
+}
+
+// 分割接口名
+func SplitName(handler HandlerFunc) (method, path string) {
+	name := NameOfFunction(handler)
+	matched := MethodExpr.FindStringSubmatch(name)
+	if len(matched) == 3 && matched[1] != "" {
+		method = strings.ToUpper(matched[1])
+		path = ParsePath(matched[2])
+	}
+	return
 }

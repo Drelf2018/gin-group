@@ -1,8 +1,6 @@
 package group
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -27,6 +25,9 @@ type Group struct {
 	// 自动接口绑定 (r.Handle)
 	Handlers []HandlerFunc
 
+	// 自定义路径绑定 (r.Handle)
+	HandlerMap map[string]HandlerFunc
+
 	// 转换器
 	// 为空则使用默认转换函数
 	Convertor func(HandlerFunc) gin.HandlerFunc
@@ -44,14 +45,19 @@ func (group Group) Bind(r gin.IRouter) {
 		group.CustomFunc(r)
 	}
 	for _, handler := range group.Handlers {
-		name := NameOfFunction(handler)
-		matched := MethodExpr.FindStringSubmatch(name)
-		if len(matched) == 3 && matched[1] != "" {
-			if group.Convertor != nil {
-				r.Handle(strings.ToUpper(matched[1]), ParsePath(matched[2]), group.Convertor(handler))
-			} else {
-				r.Handle(strings.ToUpper(matched[1]), ParsePath(matched[2]), DefaultConvertor(handler))
-			}
+		method, path := SplitName(handler)
+		if group.Convertor != nil {
+			r.Handle(method, path, group.Convertor(handler))
+		} else {
+			r.Handle(method, path, DefaultConvertor(handler))
+		}
+	}
+	for path, handler := range group.HandlerMap {
+		method, _ := SplitName(handler)
+		if group.Convertor != nil {
+			r.Handle(method, path, group.Convertor(handler))
+		} else {
+			r.Handle(method, path, DefaultConvertor(handler))
 		}
 	}
 	for _, v := range group.Groups {

@@ -32,7 +32,7 @@ var MethodAny = []string{
 }
 
 // 请求方法的正则表达式
-var MethodExpr = regexp.MustCompile(`\.(` + strings.Join(MethodAny, "|") + `)(\w*)`)
+var MethodExpr = regexp.MustCompile(`\.(Any|` + strings.Join(MethodAny, "|") + `)(\w*)`)
 
 // 获取函数名
 //

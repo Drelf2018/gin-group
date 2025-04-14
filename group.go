@@ -36,15 +36,6 @@ type Group struct {
 	Groups []Group
 }
 
-// 设置接口
-func Handle(r gin.IRouter, method, path string, handler gin.HandlerFunc) {
-	if method == "ANY" {
-		r.Any(path, handler)
-	} else {
-		r.Handle(method, path, handler)
-	}
-}
-
 // 绑定接口
 func (group Group) Bind(r gin.IRouter) {
 	if len(group.Middlewares) != 0 {
@@ -55,18 +46,34 @@ func (group Group) Bind(r gin.IRouter) {
 	}
 	for _, handler := range group.Handlers {
 		method, path := SplitName(handler)
-		if group.Convertor != nil {
-			Handle(r, method, path, group.Convertor(handler))
+		if method == "ANY" {
+			if group.Convertor != nil {
+				r.Any(path, group.Convertor(handler))
+			} else {
+				r.Any(path, DefaultConvertor(handler))
+			}
 		} else {
-			Handle(r, method, path, DefaultConvertor(handler))
+			if group.Convertor != nil {
+				r.Handle(method, path, group.Convertor(handler))
+			} else {
+				r.Handle(method, path, DefaultConvertor(handler))
+			}
 		}
 	}
 	for path, handler := range group.HandlerMap {
 		method, _ := SplitName(handler)
-		if group.Convertor != nil {
-			Handle(r, method, path, group.Convertor(handler))
+		if method == "ANY" {
+			if group.Convertor != nil {
+				r.Any(path, group.Convertor(handler))
+			} else {
+				r.Any(path, DefaultConvertor(handler))
+			}
 		} else {
-			Handle(r, method, path, DefaultConvertor(handler))
+			if group.Convertor != nil {
+				r.Handle(method, path, group.Convertor(handler))
+			} else {
+				r.Handle(method, path, DefaultConvertor(handler))
+			}
 		}
 	}
 	for _, v := range group.Groups {

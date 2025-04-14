@@ -4,11 +4,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type HandlerFunc func(ctx *gin.Context) (data any, err error)
+
 type (
 	M = []gin.HandlerFunc
 	H = []HandlerFunc
 	G = []Group
 )
+
+// 默认转换函数
+var DefaultConvertor = Convertor
 
 // 接口组 (r = gin.IRouter)
 type Group struct {

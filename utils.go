@@ -60,3 +60,26 @@ func Static(s string) gin.HandlerFunc {
 		}
 	}
 }
+
+type Response struct {
+	Code  int    `json:"code"`
+	Error string `json:"error,omitempty"`
+	Data  any    `json:"data,omitempty"`
+}
+
+// 内置转换器
+func Convertor(f HandlerFunc) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		if data, err := f(ctx); err == nil {
+			if data != nil {
+				ctx.JSON(http.StatusOK, Response{0, "", data})
+			}
+		} else {
+			if code, ok := data.(int); ok {
+				ctx.JSON(http.StatusOK, Response{code, err.Error(), nil})
+			} else {
+				ctx.JSON(http.StatusOK, Response{1, err.Error(), data})
+			}
+		}
+	}
+}
